@@ -16,7 +16,10 @@ from game.falling_object import FallingObject
 from game.collision import is_caught
 from game.renderer import WIDTH, HEIGHT
 
-SPAWN_INTERVAL_FRAMES = 50
+MIN_SPAWN_INTERVAL_FRAMES = 30
+MAX_SPAWN_INTERVAL_FRAMES = 70
+MAX_OBJECTS = 5
+MIN_SPAWN_DISTANCE = 80
 MAX_MISSES = 5
 
 
@@ -30,8 +33,23 @@ class GameEngine:
         self.game_over = False
 
     def _spawn_object(self):
-        x = random.randint(20, WIDTH - 20)
-        self.objects.append(FallingObject(x=x, y=-14, speed=3))
+        radius = 14
+        min_x = radius
+        max_x = WIDTH - radius
+
+        if self.objects:
+            previous_x = self.objects[-1].x
+            valid_positions = [
+                x for x in range(min_x, max_x + 1)
+                if abs(x - previous_x) >= MIN_SPAWN_DISTANCE
+            ]
+            if not valid_positions:
+                return
+            x = random.choice(valid_positions)
+        else:
+            x = random.randint(min_x, max_x)
+
+        self.objects.append(FallingObject(x=x, y=-radius, speed=3))
 
     def handle_input(self, keys_pressed):
         if self.game_over:
@@ -56,8 +74,12 @@ class GameEngine:
 
         self.frames_until_spawn -= 1
         if self.frames_until_spawn <= 0:
-            self._spawn_object()
-            self.frames_until_spawn = SPAWN_INTERVAL_FRAMES
+            if len(self.objects) < MAX_OBJECTS:
+                self._spawn_object()
+            self.frames_until_spawn = random.randint(
+                MIN_SPAWN_INTERVAL_FRAMES,
+                MAX_SPAWN_INTERVAL_FRAMES,
+            )
 
         for obj in self.objects:
             obj.update()
